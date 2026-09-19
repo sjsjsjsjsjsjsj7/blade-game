@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>블레이드 클래시 (Blade Clash) - 2D 검술 대전</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Pretendard:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Top Navigation & Global Controls -->
+  <header class="top-nav">
+    <div class="logo-area">
+      <span class="logo-icon">⚔️</span>
+      <h1 class="game-title">BLADE CLASH</h1>
+      <span class="version-tag">2D 검술 대전</span>
+    </div>
+
+    <div class="mode-selector">
+      <button id="btn-mode-1p" class="mode-btn active">👤 1인용 (AI 대전)</button>
+      <button id="btn-mode-2p" class="mode-btn">👥 2인용 (로컬 대전)</button>
+
+      <div id="difficulty-container" class="difficulty-wrap">
+        <label for="ai-difficulty">AI 난이도:</label>
+        <select id="ai-difficulty" class="custom-select">
+          <option value="easy">쉬움 (초심자)</option>
+          <option value="normal" selected>보통 (정예 검사)</option>
+          <option value="hard">어려움 (검성)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="utility-buttons">
+      <button id="btn-open-skin-editor" class="util-btn glow-cyan">🎨 칼 스킨 꾸미기</button>
+      <button id="btn-open-controls" class="util-btn">⌨️ 키 설정</button>
+      <button id="btn-toggle-sound" class="util-btn active">🔊 사운드 ON</button>
+      <button id="btn-restart-game" class="util-btn glow-gold">🔄 다시 시작</button>
+    </div>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="game-wrapper">
+    <!-- Battle HUD Overlay -->
+    <div class="hud-container">
+      <!-- P1 HUD -->
+      <div class="fighter-hud p1-hud">
+        <div class="fighter-info">
+          <div class="fighter-avatar p1-avatar">P1</div>
+          <div class="fighter-meta">
+            <div class="fighter-name">플레이어 1</div>
+            <div class="win-markers">
+              <span class="win-mark p1-win-mark"></span>
+              <span class="win-mark p1-win-mark"></span>
+            </div>
+          </div>
+        </div>
+        <div class="bars-container">
+          <div class="bar-wrap hp-bar-wrap">
+            <div id="p1-hp-fill" class="bar-fill hp-fill p1-hp" style="width: 100%;"></div>
+          </div>
+          <div class="bar-wrap guard-bar-wrap">
+            <div id="p1-guard-fill" class="bar-fill guard-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Timer & Info -->
+      <div class="match-center-hud">
+        <div class="timer-box">
+          <span id="match-timer">90</span>
+        </div>
+      </div>
+
+      <!-- P2 HUD -->
+      <div class="fighter-hud p2-hud">
+        <div class="fighter-info right-aligned">
+          <div class="fighter-meta">
+            <div id="p2-header-name" class="fighter-name">전투 AI</div>
+            <div class="win-markers">
+              <span class="win-mark p2-win-mark"></span>
+              <span class="win-mark p2-win-mark"></span>
+            </div>
+          </div>
+          <div class="fighter-avatar p2-avatar">P2</div>
+        </div>
+        <div class="bars-container">
+          <div class="bar-wrap hp-bar-wrap">
+            <div id="p2-hp-fill" class="bar-fill hp-fill p2-hp" style="width: 100%;"></div>
+          </div>
+          <div class="bar-wrap guard-bar-wrap">
+            <div id="p2-guard-fill" class="bar-fill guard-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Frame -->
+    <div id="canvas-wrapper" class="canvas-wrapper">
+      <canvas id="battle-canvas"></canvas>
+
+      <!-- Floating Camera Zoom Controls -->
+      <div class="floating-camera-controls">
+        <button id="btn-zoom-in" class="cam-btn" title="화면 확대">➕</button>
+        <button id="btn-zoom-out" class="cam-btn" title="화면 축소">➖</button>
+        <button id="btn-zoom-reset" class="cam-btn" title="시점 리셋">🎯 1.0x</button>
+        <div class="zoom-tooltip">휠 스크롤: 줌 / 우클릭: 시점 이동</div>
+      </div>
+    </div>
+
+    <!-- Quick Controls Helper Guide Bar -->
+    <footer class="controls-guide-bar">
+      <div class="guide-col p1-col">
+        <span class="badge p1-badge">P1</span>
+        <span>이동: <b>A / D</b></span>
+        <span>점프: <b>W</b></span>
+        <span>막기/가드: <b>S</b></span>
+        <span>공격: <b>J</b></span>
+        <span>강공격: <b>K</b></span>
+        <span>대시: <b>L</b></span>
+      </div>
+      <div class="guide-col divider"></div>
+      <div class="guide-col mechanics-col">
+        <span class="highlight-action">⚔️ 퍼펙트 패링:</span> <span>적 공격 직전 <b>막기</b> 입력 시 반격 찬스!</span>
+        <span class="highlight-action">🛡️ 가드 브레이크:</span> <span>가드 남용 시 2초 기절!</span>
+      </div>
+      <div class="guide-col divider"></div>
+      <div class="guide-col p2-col">
+        <span class="badge p2-badge">P2</span>
+        <span>이동: <b>← / →</b></span>
+        <span>점프: <b>↑</b></span>
+        <span>막기/가드: <b>↓</b></span>
+        <span>공격: <b>Num 1</b></span>
+        <span>강공격: <b>Num 2</b></span>
+        <span>대시: <b>Num 3</b></span>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. Sword Skin Customizer Modal -->
+  <div id="modal-skin-editor" class="modal-backdrop">
+    <div class="modal-card skin-modal-card">
+      <div class="modal-header">
+        <h2>🎨 칼(검) 스킨 커스터마이징</h2>
+        <button id="btn-close-skin-modal" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button id="skin-tab-p1" class="tab-btn active">플레이어 1 검</button>
+        <button id="skin-tab-p2" class="tab-btn">플레이어 2 / AI 검</button>
+      </div>
+
+      <div class="skin-editor-body">
+        <!-- Live Rotating 360 Preview -->
+        <div class="skin-preview-section">
+          <div class="preview-label">실시간 스윙 프리뷰</div>
+          <canvas id="skin-preview-canvas" width="280" height="260"></canvas>
+          <div class="preview-hint">설정한 검의 외형과 검기 파티클이 즉시 적용됩니다</div>
+        </div>
+
+        <!-- Customizer Controls -->
+        <div class="skin-controls-section">
+          <div class="form-group">
+            <label for="skin-blade-type">검 외형 (Blade Type)</label>
+            <select id="skin-blade-type" class="custom-select">
+              <option value="katana">카타나 (곡도 - 날렵하고 빠른 검)</option>
+              <option value="greatsword">대검 (클레이모어 - 묵직한 거대 검)</option>
+              <option value="saber">광선검 (레이저 세이버 - 사이버 네온)</option>
+              <option value="void">공허의 흑도 (톱니형 마검)</option>
+              <option value="rapier">레이피어 (세검 - 예리한 펜싱검)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="skin-trail-effect">검기 궤적 파티클 (Trail Effect)</label>
+            <select id="skin-trail-effect" class="custom-select">
+              <option value="neon">네온 사이버 웨이브 (Cyan Glow)</option>
+              <option value="fire">지옥불 화염 (Inferno Flame)</option>
+              <option value="lightning">전격 스파크 (Lightning Spark)</option>
+              <option value="sakura">흩날리는 벚꽃잎 (Sakura Drift)</option>
+              <option value="shadow">공허의 암흑 (Dark Void)</option>
+              <option value="gold">태양의 황금빛 (Sunburst Gold)</option>
+            </select>
+          </div>
+
+          <div class="color-pickers-grid">
+            <div class="color-item">
+              <label for="skin-blade-color">칼날 메인</label>
+              <input type="color" id="skin-blade-color" value="#00e5ff">
+            </div>
+            <div class="color-item">
+              <label for="skin-edge-color">칼날 날/엣지</label>
+              <input type="color" id="skin-edge-color" value="#ffffff">
+            </div>
+            <div class="color-item">
+              <label for="skin-hilt-color">검 손잡이</label>
+              <input type="color" id="skin-hilt-color" value="#111827">
+            </div>
+            <div class="color-item">
+              <label for="skin-glow-color">발광 오라</label>
+              <input type="color" id="skin-glow-color" value="#00e5ff">
+            </div>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="form-group presets-group">
+            <label>인기 추천 프리셋</label>
+            <div id="skin-presets-list" class="presets-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Custom Keybindings Modal -->
+  <div id="modal-controls" class="modal-backdrop">
+    <div class="modal-card controls-modal-card">
+      <div class="modal-header">
+        <h2>⌨️ 조작키 커스텀 설정</h2>
+        <button id="btn-close-controls-modal" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="controls-editor-body">
+        <p class="rebind-desc">변경하고 싶은 동작의 키 버튼을 클릭한 후, 원하는 키보드 키를 누르면 즉시 변경됩니다.</p>
+
+        <div class="rebind-columns">
+          <!-- P1 Keybindings -->
+          <div class="rebind-col">
+            <h3>플레이어 1 조작키</h3>
+            <div class="bind-row">
+              <span>좌측 이동</span>
+              <button class="key-bind-btn" data-player="p1" data-action="left">A</button>
+            </div>
+            <div class="bind-row">
+              <span>우측 이동</span>
+              <button class="key-bind-btn" data-player="p1" data-action="right">D</button>
+            </div>
+            <div class="bind-row">
+              <span>점프</span>
+              <button class="key-bind-btn" data-player="p1" data-action="jump">W</button>
+            </div>
+            <div class="bind-row">
+              <span>막기 / 가드</span>
+              <button class="key-bind-btn" data-player="p1" data-action="block">S</button>
+            </div>
+            <div class="bind-row">
+              <span>약공격</span>
+              <button class="key-bind-btn" data-player="p1" data-action="attack">J</button>
+            </div>
+            <div class="bind-row">
+              <span>강공격</span>
+              <button class="key-bind-btn" data-player="p1" data-action="heavy">K</button>
+            </div>
+            <div class="bind-row">
+              <span>대시 (회피)</span>
+              <button class="key-bind-btn" data-player="p1" data-action="dash">L</button>
+            </div>
+            <button id="btn-reset-p1-keys" class="reset-keys-btn">P1 기본값 초기화</button>
+          </div>
+
+          <!-- P2 Keybindings -->
+          <div class="rebind-col">
+            <h3>플레이어 2 조작키</h3>
+            <div class="bind-row">
+              <span>좌측 이동</span>
+              <button class="key-bind-btn" data-player="p2" data-action="left">←</button>
+            </div>
+            <div class="bind-row">
+              <span>우측 이동</span>
+              <button class="key-bind-btn" data-player="p2" data-action="right">→</button>
+            </div>
+            <div class="bind-row">
+              <span>점프</span>
+              <button class="key-bind-btn" data-player="p2" data-action="jump">↑</button>
+            </div>
+            <div class="bind-row">
+              <span>막기 / 가드</span>
+              <button class="key-bind-btn" data-player="p2" data-action="block">↓</button>
+            </div>
+            <div class="bind-row">
+              <span>약공격</span>
+              <button class="key-bind-btn" data-player="p2" data-action="attack">Num 1</button>
+            </div>
+            <div class="bind-row">
+              <span>강공격</span>
+              <button class="key-bind-btn" data-player="p2" data-action="heavy">Num 2</button>
+            </div>
+            <div class="bind-row">
+              <span>대시 (회피)</span>
+              <button class="key-bind-btn" data-player="p2" data-action="dash">Num 3</button>
+            </div>
+            <button id="btn-reset-p2-keys" class="reset-keys-btn">P2 기본값 초기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Floating AI Chatbot Widget -->
+  <div id="chatbot-container">
+    <!-- Floating Trigger Button -->
+    <button id="btn-toggle-chatbot" class="chat-toggle-btn">
+      <span class="chat-toggle-icon">🥋</span>
+      <span class="chat-toggle-text">AI 사범 마스터 켄</span>
+      <span id="chat-badge" class="chat-badge">!</span>
+    </button>
+
+    <!-- Chatbot Drawer Window -->
+    <div id="chatbot-drawer" class="chat-drawer">
+      <div class="chat-header">
+        <div class="chat-master-info">
+          <span class="master-avatar">🥋</span>
+          <div>
+            <div class="master-name">마스터 켄 (Master Ken)</div>
+            <div class="master-status">온라인 • AI 전투 코치</div>
+          </div>
+        </div>
+        <button id="btn-close-chat" class="chat-close-btn">&times;</button>
+      </div>
+
+      <!-- Quick Chips -->
+      <div class="chat-chips-row">
+        <button class="chat-chip" data-prompt="조작법 알려줘">💡 조작법</button>
+        <button class="chat-chip" data-prompt="퍼펙트 패링 어떻게 해?">⚔️ 패링 팁</button>
+        <button class="chat-chip" data-prompt="AI 이기는 법 알려줘">🔥 AI 공략</button>
+        <button class="chat-chip" data-prompt="칼 스킨 꾸미는 법">🎨 스킨 팁</button>
+      </div>
+
+      <!-- Messages Log -->
+      <div id="chat-messages" class="chat-messages"></div>
+
+      <!-- Input Bar -->
+      <div class="chat-input-area">
+        <input type="text" id="chat-input-text" placeholder="사범님에게 질문하기... (Enter)" autocomplete="off">
+        <button id="btn-send-chat" class="send-btn">전송</button>
+      </div>
+
+      <!-- Optional API Key Accordion -->
+      <details class="api-key-accordion">
+        <summary>⚙️ Google Gemini API Key 설정 (선택사항)</summary>
+        <div class="api-key-box">
+          <input type="password" id="gemini-api-key" placeholder="Gemini API Key 입력 (비워둘 시 내장 스마트 AI 작동)">
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/skin_editor.js"></script>
+  <script src="js/controls.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/fighter.js"></script>
+  <script src="js/chatbot.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
